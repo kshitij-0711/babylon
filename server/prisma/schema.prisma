@@ -1,0 +1,358 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MarketStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  RESOLVED
+  CANCELLED
+}
+
+enum MarketCategory {
+  POLITICS
+  SPORTS
+  TECHNOLOGY
+  SCIENCE
+  ENTERTAINMENT
+  FINANCE
+  WORLD_EVENTS
+  OTHER
+}
+
+enum OrderSide {
+  YES
+  NO
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderStatus {
+  PENDING
+  PARTIAL
+  FILLED
+  CANCELLED
+  EXPIRED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  ORDER_DEBIT
+  ORDER_CREDIT
+  TRADE_PAYOUT
+  REFUND
+  FEE
+}
+
+enum ResolutionOutcome {
+  YES
+  NO
+  VOID
+}
+
+// ============================================================
+// USER PROFILE
+// mirrors Supabase's auth.users — created automatically
+// via a Postgres trigger on first login
+// ============================================================
+
+model User {
+  // This IS the Supabase auth.users UUID — same value, no separate supabaseId needed
+  id String @id @map("id") // populated from auth.uid()
+
+  email       String   @unique
+  username    String   @unique
+  displayName String?  @map("display_name")
+  avatarUrl   String?  @map("avatar_url") // pulled from Google profile on first login
+  bio         String?
+  role        UserRole @default(USER)
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  lastLoginAt DateTime? @map("last_login_at")
+
+  // Relations
+  wallet       Wallet?
+  markets      Market[]      @relation("MarketCreator")
+  orders       Order[]
+  positions    Position[]
+  transactions Transaction[]
+  tradeStats   TraderStats?
+
+  @@map("users")
+}
+
+// ============================================================
+// WALLET
+// ============================================================
+
+model Wallet {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+
+  balance        Decimal @default(1000.00) @db.Decimal(18, 2)
+  lockedBalance  Decimal @default(0.00) @map("locked_balance") @db.Decimal(18, 2)
+  totalDeposited Decimal @default(1000.00) @map("total_deposited") @db.Decimal(18, 2)
+  totalWithdrawn Decimal @default(0.00) @map("total_withdrawn") @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+// ============================================================
+// MARKET
+// ============================================================
+
+model Market {
+  id        String @id @default(uuid())
+  creatorId String @map("creator_id")
+
+  title       String
+  description String
+  category    MarketCategory @default(OTHER)
+  imageUrl    String?        @map("image_url")
+  tags        String[]       @default([])
+  status      MarketStatus   @default(DRAFT)
+
+  yesPrice    Decimal @default(0.50) @map("yes_price") @db.Decimal(5, 4)
+  noPrice     Decimal @default(0.50) @map("no_price") @db.Decimal(5, 4)
+  totalVolume Decimal @default(0.00) @map("total_volume") @db.Decimal(18, 2)
+  totalShares Int     @default(0) @map("total_shares")
+
+  openAt    DateTime  @default(now()) @map("open_at")
+  closeAt   DateTime  @map("close_at")
+  resolveAt DateTime? @map("resolve_at")
+
+  outcome    ResolutionOutcome?
+  resolvedAt DateTime?          @map("resolved_at")
+  resolvedBy String?            @map("resolved_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  creator      User           @relation("MarketCreator", fields: [creatorId], references: [id])
+  orders       Order[]
+  positions    Position[]
+  priceHistory PriceHistory[]
+  resolution   Resolution?
+
+  @@index([status])
+  @@index([category])
+  @@index([closeAt])
+  @@index([creatorId])
+  @@map("markets")
+}
+
+// ============================================================
+// ORDER
+// ============================================================
+
+model Order {
+  id       String @id @default(uuid())
+  userId   String @map("user_id")
+  marketId String @map("market_id")
+
+  side   OrderSide
+  type   OrderType
+  status OrderStatus @default(PENDING)
+
+  quantity     Int
+  filledQty    Int      @default(0) @map("filled_qty")
+  price        Decimal  @db.Decimal(5, 4)
+  avgFillPrice Decimal? @map("avg_fill_price") @db.Decimal(5, 4)
+  totalCost    Decimal  @map("total_cost") @db.Decimal(18, 2)
+
+  expiresAt   DateTime? @map("expires_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  filledAt    DateTime? @map("filled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User    @relation(fields: [userId], references: [id])
+  market      Market  @relation(fields: [marketId], references: [id])
+  trades      Trade[] @relation("BuyOrderTrades")
+  salesTrades Trade[] @relation("SellOrderTrades")
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([status])
+  @@index([marketId, side, status, price])
+  @@map("orders")
+}
+
+// ============================================================
+// TRADE
+// ============================================================
+
+model Trade {
+  id          String @id @default(uuid())
+  marketId    String @map("market_id")
+  buyOrderId  String @map("buy_order_id")
+  sellOrderId String @map("sell_order_id")
+
+  side       OrderSide
+  quantity   Int
+  price      Decimal   @db.Decimal(5, 4)
+  totalValue Decimal   @map("total_value") @db.Decimal(18, 2)
+
+  executedAt DateTime @default(now()) @map("executed_at")
+
+  buyOrder  Order @relation("BuyOrderTrades", fields: [buyOrderId], references: [id])
+  sellOrder Order @relation("SellOrderTrades", fields: [sellOrderId], references: [id])
+
+  @@index([marketId])
+  @@index([executedAt])
+  @@map("trades")
+}
+
+// ============================================================
+// POSITION
+// ============================================================
+
+model Position {
+  id       String    @id @default(uuid())
+  userId   String    @map("user_id")
+  marketId String    @map("market_id")
+  side     OrderSide
+
+  shares        Int     @default(0)
+  avgCost       Decimal @default(0.00) @map("avg_cost") @db.Decimal(5, 4)
+  totalInvested Decimal @default(0.00) @map("total_invested") @db.Decimal(18, 2)
+  realisedPnl   Decimal @default(0.00) @map("realised_pnl") @db.Decimal(18, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  market Market @relation(fields: [marketId], references: [id])
+
+  @@unique([userId, marketId, side])
+  @@index([userId])
+  @@index([marketId])
+  @@map("positions")
+}
+
+// ============================================================
+// PRICE HISTORY
+// ============================================================
+
+model PriceHistory {
+  id       String    @id @default(uuid())
+  marketId String    @map("market_id")
+  side     OrderSide
+
+  price     Decimal  @db.Decimal(5, 4)
+  volume    Int      @default(0)
+  timestamp DateTime @default(now())
+
+  market Market @relation(fields: [marketId], references: [id])
+
+  @@index([marketId, side, timestamp])
+  @@map("price_history")
+}
+
+// ============================================================
+// RESOLUTION
+// ============================================================
+
+model Resolution {
+  id       String @id @default(uuid())
+  marketId String @unique @map("market_id")
+
+  outcome     ResolutionOutcome
+  evidenceUrl String?           @map("evidence_url")
+  notes       String?
+
+  totalPayout  Decimal @default(0.00) @map("total_payout") @db.Decimal(18, 2)
+  winnersCount Int     @default(0) @map("winners_count")
+
+  resolvedAt DateTime @default(now()) @map("resolved_at")
+  resolvedBy String   @map("resolved_by")
+
+  market Market @relation(fields: [marketId], references: [id])
+
+  @@map("resolutions")
+}
+
+// ============================================================
+// TRANSACTION
+// ============================================================
+
+model Transaction {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+
+  type         TransactionType
+  amount       Decimal         @db.Decimal(18, 2)
+  balanceAfter Decimal         @map("balance_after") @db.Decimal(18, 2)
+
+  referenceId   String? @map("reference_id")
+  referenceType String? @map("reference_type")
+  description   String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([referenceId])
+  @@map("transactions")
+}
+
+// ============================================================
+// TRADER STATS
+// ============================================================
+
+model TraderStats {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+
+  totalTrades   Int @default(0) @map("total_trades")
+  winningTrades Int @default(0) @map("winning_trades")
+  losingTrades  Int @default(0) @map("losing_trades")
+
+  totalProfit Decimal @default(0.00) @map("total_profit") @db.Decimal(18, 2)
+  totalLoss   Decimal @default(0.00) @map("total_loss") @db.Decimal(18, 2)
+  netPnl      Decimal @default(0.00) @map("net_pnl") @db.Decimal(18, 2)
+  roi         Decimal @default(0.00) @db.Decimal(8, 4)
+
+  marketsTraded  Int @default(0) @map("markets_traded")
+  marketsCreated Int @default(0) @map("markets_created")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("trader_stats")
+}

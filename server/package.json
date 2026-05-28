@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon --exec tsx src/server.ts",
     "build": "tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/app.js",
     "lint": "eslint src --ext .ts",
     "test": "jest --coverage",

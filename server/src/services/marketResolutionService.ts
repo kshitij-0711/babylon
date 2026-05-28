@@ -36,7 +36,7 @@ interface ResolveData {
 export async function resolveMarket(marketId: string, data: ResolveData) {
   const { outcome, evidenceUrl, notes, resolvedBy } = data;
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: any) => {
     // ── 1. Validate market state ────────────────────────────
     const market = await marketRepository.findById(marketId);
 

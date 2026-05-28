@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { ResolutionOutcome } from '../generated/prisma';
+import { ResolutionOutcome } from 'prisma-client';
 
 export const create = async (data: {
   marketId: string;

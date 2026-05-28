@@ -10,7 +10,7 @@ import * as traderStatsRepository from '../repositories/traderStatsRepository';
 import { serialiseDecimals } from './helpers/serialise';
 import { AppError } from './helpers/AppError';
 import prisma from '../lib/prisma';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from 'prisma-client';
 type Decimal = Prisma.Decimal;
 const Decimal = Prisma.Decimal;
 

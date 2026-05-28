@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OrderSide } from '../generated/prisma';
+import { OrderSide } from 'prisma-client';
 
 export const upsert = async (
   userId: string,

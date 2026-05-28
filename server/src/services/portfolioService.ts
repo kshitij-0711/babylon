@@ -2,7 +2,7 @@
 import * as positionRepository from '../repositories/positionRepository';
 import * as transactionRepository from '../repositories/transactionRepository';
 import { serialiseDecimals, serialiseDecimal } from './helpers/serialise';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from 'prisma-client';
 type Decimal = Prisma.Decimal;
 const Decimal = Prisma.Decimal;
 

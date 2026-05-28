@@ -3,7 +3,7 @@ import * as priceHistoryRepository from '../repositories/priceHistoryRepository'
 import * as orderRepository from '../repositories/orderRepository';
 import { serialiseDecimals, serialiseDecimal } from './helpers/serialise';
 import { AppError } from './helpers/AppError';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from 'prisma-client';
 type Decimal = Prisma.Decimal;
 const Decimal = Prisma.Decimal;
 

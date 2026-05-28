@@ -6,7 +6,7 @@ import * as traderStatsRepository from '../repositories/traderStatsRepository';
 import * as resolutionRepository from '../repositories/resolutionRepository';
 import { AppError } from './helpers/AppError';
 import prisma from '../lib/prisma';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from 'prisma-client';
 type Decimal = Prisma.Decimal;
 const Decimal = Prisma.Decimal;
 

@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from 'prisma-client';
 
 export const findByUserId = async (userId: string) => {
   return prisma.traderStats.findUnique({

@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OrderSide, OrderStatus, Prisma } from '../generated/prisma';
+import { OrderSide, OrderStatus, Prisma } from 'prisma-client';
 
 export const create = async (data: {
   userId: string;

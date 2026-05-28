@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { TransactionType } from '../generated/prisma';
+import { TransactionType } from 'prisma-client';
 
 export const create = async (data: {
   userId: string;

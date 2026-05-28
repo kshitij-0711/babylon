@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { MarketCategory, MarketStatus, Prisma } from '../generated/prisma';
+import { MarketCategory, MarketStatus, Prisma } from 'prisma-client';
 
 export interface MarketFilters {
   category?: MarketCategory;
